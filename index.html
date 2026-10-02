@@ -4607,8 +4607,18 @@ const isTouchDev = matchMedia('(pointer:coarse)').matches || (navigator.maxTouch
 let rotBlock = false;
 function checkOrient() { rotBlock = isTouchDev && innerHeight > innerWidth; $('#rotate').hidden = !rotBlock; if (rotBlock) { closePanels(); J.active = false; J.mag = 0; drawJoy(); } }
 addEventListener('resize', checkOrient); addEventListener('orientationchange', () => setTimeout(checkOrient, 150)); checkOrient();
-if (isTouchDev) addEventListener('pointerdown', function lockLand() { removeEventListener('pointerdown', lockLand, true);
-  try { const el = document.documentElement, fs = el.requestFullscreen || el.webkitRequestFullscreen; const r = fs && fs.call(el, { navigationUI: 'hide' }); const lock = () => { try { const p = screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'); if (p && p.catch) p.catch(() => {}); } catch (e) {} }; if (r && r.then) r.then(lock, lock); else lock(); } catch (e) {} }, true);
+// Tam ekran: dokunmatikte her dokunuşun sonunda (touchend/click = tarayıcının kabul ettiği kullanıcı hareketi) tekrar denenir; çıkılırsa sonraki dokunuşta geri girer
+const standaloneApp = () => matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const fsApi = () => { const el = document.documentElement; return el.requestFullscreen || el.webkitRequestFullscreen; };
+function goFull() {
+  if (!isTouchDev || standaloneApp() || document.fullscreenElement || document.webkitFullscreenElement) return;
+  const fs = fsApi(); const lock = () => { try { const p = screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'); if (p && p.catch) p.catch(() => {}); } catch (e) {} };
+  if (!fs) { if (!goFull.hint && /iPhone|iPod/.test(navigator.userAgent)) { goFull.hint = 1; setTimeout(() => toast('Full screen on iPhone: Share ⬆ → Add to Home Screen, then open the game from its icon'), 1500); } return; }
+  try { const r = fs.call(document.documentElement, { navigationUI: 'hide' }); if (r && r.then) r.then(lock, () => {}); else lock(); } catch (e) {}
+}
+if (isTouchDev) { addEventListener('touchend', goFull, true); addEventListener('click', goFull, true); }
+// Kendi sitesinde (ör. GitHub Pages) yüklenebilir uygulama: manifest + ikon → "Ana ekrana ekle" ile tam ekran açılır
+if (!/claude\.ai|claudeusercontent|anthropic/.test(location.host) && location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = 'manifest.json'; document.head.appendChild(l); const a = document.createElement('link'); a.rel = 'apple-touch-icon'; a.href = 'icon-192.png'; document.head.appendChild(a); }
 setTimeout(() => { $('#camHint').hidden = true; }, 9000);
 
 /* ---------- Ana döngü ---------- */
