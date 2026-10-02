@@ -1,7 +1,7 @@
 <meta charset="utf-8">
-<title>Salty Wind MVP</title>
+<title>BLOCK JUU</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Salty Wind"><meta name="theme-color" content="#1B2440">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap">
 <style>
@@ -368,13 +368,47 @@ kbd{font:800 11px 'Baloo 2',sans-serif;background:var(--paper);border:2px solid 
   <div id="sailP" class="sheet" hidden></div>
   <div id="adOffer" hidden><span class="ic"><svg class="i"><use id="adOfIco" href="#i-pot-m"/></svg></span><span class="tx"><b id="adOfT"></b><small id="adOfD"></small></span><button class="btn gold" id="adOfYes">▶ Watch</button><button class="x" id="adOfNo" aria-label="No thanks">✕</button></div>
   <div id="adPlay" hidden><div class="adBox"><em>AD</em><b>Test ad</b><small>In the mobile app a real rewarded ad plays here</small><div class="adBar"><i id="adBar"></i></div><span>Reward in <b id="adN">5</b> s</span></div></div>
-  <div id="rotate" hidden><div class="rb2"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.2" fill="#FFF4DD" stroke="#1B2440" stroke-width="1.8"/><rect x="8.6" y="5" width="6.8" height="13" rx=".8" fill="#8fd9e6"/><circle cx="12" cy="19.7" r=".8" fill="#1B2440"/></svg><b class="ol">Rotate your phone</b><small>Salty Wind is played in landscape</small></div></div>
+  <div id="rotate" hidden><div class="rb2"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.2" fill="#FFF4DD" stroke="#1B2440" stroke-width="1.8"/><rect x="8.6" y="5" width="6.8" height="13" rx=".8" fill="#8fd9e6"/><circle cx="12" cy="19.7" r=".8" fill="#1B2440"/></svg><b class="ol">Rotate your phone</b><small>BLOCK JUU is played in landscape</small></div></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<script src="three.min.js"></script>
 <script>
 (() => {
 'use strict';
+/* CrazyGames SDK v3 köprüsü: ödüllü reklam, oynanış olayları, ses ayarı, Data modülü kaydı */
+const CG = {
+  ok: false, active: null, loaded: false, adMute: false, setMute: false,
+  sdk() { return this.ok ? window.CrazyGames.SDK : null; },
+  applyAudio() { try { if (typeof SFX === 'undefined' || !SFX.ctx) return; if (this.adMute || this.setMute) SFX.ctx.suspend(); else SFX.ctx.resume(); } catch (e) {} },
+  mute(m) { this.adMute = m; this.applyAudio(); },
+  happy() { try { this.sdk() && this.sdk().game.happytime(); } catch (e) {} },
+  tick() {
+    const S = this.sdk(); if (!S) return;
+    if (!this.loaded) { this.loaded = true; try { S.game.loadingStop(); } catch (e) {} }
+    const act = !panelOpen() && P.state !== 'dead' && !rotBlock && !document.hidden;
+    if (act !== this.active) { this.active = act; try { act ? S.game.gameplayStart() : S.game.gameplayStop(); } catch (e) {} }
+  },
+  syncSave() { // CrazyGames Data modülü: misafir + giriş yapmış oyuncu için cihazlar arası kayıt
+    const S = this.sdk(); if (!S || !S.data) return;
+    try {
+      const raw = S.data.getItem(SAVE_KEY), d = raw ? JSON.parse(raw) : null;
+      if (d && (d.v === 1 || d.v === 2) && (d.savedAt || 0) > (Save.loadedAt || 0) && game.mode === 'land') Save.apply(d);
+      cloud = { set: x => { try { S.data.setItem(SAVE_KEY, JSON.stringify(x)); } catch (e) {} return Promise.resolve(); } };
+      if (!d) markDirty();
+    } catch (e) {}
+  },
+  ready: (async () => {
+    try {
+      if (!window.CrazyGames || !window.CrazyGames.SDK) return;
+      await window.CrazyGames.SDK.init(); const S = window.CrazyGames.SDK;
+      CG.ok = S.environment === 'crazygames' || S.environment === 'local'; if (!CG.ok) return;
+      try { S.game.loadingStart(); } catch (e) {}
+      try { CG.setMute = !!(S.game.settings && S.game.settings.muteAudio); S.game.addSettingsChangeListener(st => { CG.setMute = !!st.muteAudio; CG.applyAudio(); }); } catch (e) {}
+      CG.syncSave();
+    } catch (e) { CG.ok = false; }
+  })(),
+};
 /* ==================================================================
    Tuzlu Rüzgâr — Geliştirilmiş MVP
    Keşfet → Savaş → Kaynak Topla → Depola → Gemi Geliştir → Gemi Ele Geçir → Depoyu Koru
@@ -2372,7 +2406,7 @@ function trainSoldier(i) {
 function crewHTML() {
   const rc = ECON.recruit, S = PROG.soldier;
   let h = `<h5><span>CREW</span><span>${G.crew.length}/${S.barracksCap} · following ${G.crew.filter(e => e.follow).length}/${boatCfg().crew}</span></h5>`;
-  G.crew.forEach((e, i) => { const s = crewStats(e); h += row(ico('i-crew'), `${crewName(e, i)} · Lv ${e.lv} · ${Orders.label(e)}`, `ATK ${s.atk} · HP ${s.hp} · Silah +${e.w} · Meals ${e.m}/3${e.m ? '' : ' · HUNGRY'}`); });
+  G.crew.forEach((e, i) => { const s = crewStats(e); h += row(ico('i-crew'), `${crewName(e, i)} · Lv ${e.lv} · ${Orders.label(e)}`, `ATK ${s.atk} · HP ${s.hp} · Weapon +${e.w} · Meals ${e.m}/3${e.m ? '' : ' · HUNGRY'}`); });
   h += `<button class="btn big" data-recruit ${G.crew.length < S.barracksCap && G.gold >= rc.gold && G.depot.food >= rc.food ? '' : 'disabled'}>Recruit · ${rc.gold} Gold + ${rc.food} Food</button><p class="note">New soldiers wait at the Barracks. Go to the Barracks for TRAIN / UPGRADE and FOLLOW / JOIN.</p>`;
   return h;
 }
@@ -2380,12 +2414,12 @@ function renderBar() {
   const S = PROG.soldier, capN = boatCfg().crew, fN = G.crew.filter(e => e.follow).length, rc = ECON.recruit;
   let h = hdr('Barracks', 'Train waiting soldiers · take them with FOLLOW / JOIN');
   h += `<div class="stats"><span>Following</span><b>${fN}/${capN} (boat boarding capacity)</b><span>Total soldiers</span><b>${G.crew.length}/${S.barracksCap}</b></div>`;
-  h += `<button class="btn big" data-join ${G.crew.some(e => !e.follow) && fN < capN ? '' : 'disabled'}>FOLLOW / JOIN</button><h5><span>ASKERLER</span><span>TRAIN / UPGRADE</span></h5>`;
+  h += `<button class="btn big" data-join ${G.crew.some(e => !e.follow) && fN < capN ? '' : 'disabled'}>FOLLOW / JOIN</button><h5><span>SOLDIERS</span><span>TRAIN / UPGRADE</span></h5>`;
   G.crew.forEach((e, i) => {
     const s = crewStats(e), c = S.cost(e.lv), max = e.lv >= S.maxLevel;
     const trainBtn = `<button class="btn gold" data-train="${i}" ${!max && canPay(c) ? '' : 'disabled'}>${max ? 'MAX' : 'TRAIN'}</button>`;
     const right = (e.follow ? `<button class="btn soft" data-stay="${i}">Stay</button>` : `<button class="btn soft" data-go="${i}" ${fN < capN ? '' : 'disabled'}>Join</button>`) + trainBtn;
-    h += row(ico('i-crew'), `${crewName(e, i)} · Level ${e.lv} · ${Orders.label(e)}`, `ATK ${s.atk} · HP ${s.hp} · DEF %${s.def} · Silah +${e.w} · Meals ${e.m}/3` + (max ? '' : `<br>TRAIN → Lv ${e.lv + 1}: ${costStr(c)}`), right);
+    h += row(ico('i-crew'), `${crewName(e, i)} · Level ${e.lv} · ${Orders.label(e)}`, `ATK ${s.atk} · HP ${s.hp} · DEF %${s.def} · Weapon +${e.w} · Meals ${e.m}/3` + (max ? '' : `<br>TRAIN → Lv ${e.lv + 1}: ${costStr(c)}`), right);
   });
   if (!G.crew.length) h += `<p class="note">No soldiers at the Barracks.</p>`;
   h += `<button class="btn big" data-recruit ${G.crew.length < S.barracksCap && G.gold >= rc.gold && G.depot.food >= rc.food ? '' : 'disabled'}>Recruit · ${rc.gold} Gold + ${rc.food} Food (from warehouse)</button>`;
@@ -2411,7 +2445,7 @@ function workshopHTML() {
   for (const g of Object.keys(QUEST_GROUPS)) { const q = currentQuest(g); if (q && q.type === 'deliver') h += row(ico(g === 'bow' ? 'i-bow' : 'i-drone'), q.n + ' · quest', Object.entries(q.cost).map(([k, v]) => have(k) + '/' + v + ' ' + ITEMS[k].n).join(' · '), `<button class="btn gold" data-qdel="${g}" ${canPay(q.cost) ? '' : 'disabled'}>Deliver</button>`); }
   if (G.drone.owned) {
     const L = G.drone.lv, c = D.levels[L], nx = D.levels[L + 1], hurt = G.drone.destroyed || G.drone.hp < c.hp;
-    h += row(ico('i-drone'), 'Drone · Level ' + L + (G.drone.destroyed ? ' · DOWNED' : ''), `HP ${Math.round(G.drone.hp)}/${c.hp} · Hasar ${c.dmg} · Menzil ${c.range} m · Ammo ${c.ammo} · Recharge ${c.cd} s<br>POWER SHOT: ${c.psMax} shots · ${c.psDmg} dmg · ${c.psReload} s / shot (T)` + (hurt ? '<br>Repair: ' + costStr(D.repair) : ''), hurt ? `<button class="btn gold" data-drep ${canPay(D.repair) ? '' : 'disabled'}>Repair</button>` : '');
+    h += row(ico('i-drone'), 'Drone · Level ' + L + (G.drone.destroyed ? ' · DOWNED' : ''), `HP ${Math.round(G.drone.hp)}/${c.hp} · Damage ${c.dmg} · Range ${c.range} m · Ammo ${c.ammo} · Recharge ${c.cd} s<br>POWER SHOT: ${c.psMax} shots · ${c.psDmg} dmg · ${c.psReload} s / shot (T)` + (hurt ? '<br>Repair: ' + costStr(D.repair) : ''), hurt ? `<button class="btn gold" data-drep ${canPay(D.repair) ? '' : 'disabled'}>Repair</button>` : '');
     if (nx) h += row(ico('i-star'), 'Drone Level ' + (L + 1) + ' · ' + nx.note, `Power Shot ${nx.psMax} shots · ${nx.psDmg} dmg · Range ${nx.range} m<br>Requires: player Level ${nx.req} · ${costStr(nx.cost)}`, `<button class="btn" data-dup ${P.level >= nx.req && canPay(nx.cost) ? '' : 'disabled'}>Upgrade</button>`);
   }
   return h;
@@ -2876,7 +2910,7 @@ function renderYard() {
   h += `<h5><span>FLEET · HARBOR DOCK</span><span>${Fleet.list.length}/${PROG.fleet.max}</span></h5>`;
   if (!Fleet.list.length) h += `<p class="note">Enemy ships you capture dock here.</p>`;
   Fleet.list.forEach((f, i) => { const u = PROG.fleet.use[f.type];
-    h += row(ico('i-eship'), f.cfg.n + ' · Lv ' + f.cfg.lv, f.inUse ? 'You are sailing this ship' : f.state === 'moored' ? 'HP ' + u.hp + ' · Kapasite ' + u.cargo + ' · ' + u.crew + ' soldiers · cannons · salvage: ' + costStr(PROG.fleet.salvage[f.type]) : 'Coming to harbor…',
+    h += row(ico('i-eship'), f.cfg.n + ' · Lv ' + f.cfg.lv, f.inUse ? 'You are sailing this ship' : f.state === 'moored' ? 'HP ' + u.hp + ' · Capacity ' + u.cargo + ' · ' + u.crew + ' soldiers · cannons · salvage: ' + costStr(PROG.fleet.salvage[f.type]) : 'Coming to harbor…',
       f.inUse ? `<button class="btn soft" data-unuse>Back to boat</button>` : f.state === 'moored' ? `<button class="btn" data-use="${i}">Use</button><button class="btn soft" data-salv="${i}">Salvage</button>` : ''); });
   if (Fleet.list.some(f => f.state === 'moored')) h += `<p class="note">"Use": make the ship your active boat. More HP, cargo and soldiers; automatic cannons. Slower than your own boat.</p>`;
   yardEl.innerHTML = h;
@@ -2887,7 +2921,7 @@ yardEl.addEventListener('click', e => {
   const use = b.getAttribute('data-use'); if (use != null) { Fleet.use(+use); if (USE_SHIP) G.stats.shipUsed = (G.stats.shipUsed || 0) + 1; }
   if (b.hasAttribute('data-unuse')) Fleet.unuse();
   if (b.hasAttribute('data-repair')) { const c = boatCfg(), rc = Math.ceil((c.hp - G.boatHp) * 2); if (G.gold >= rc) { G.gold -= rc; G.boatHp = c.hp; SFX.play('knock'); toast('Boat repaired'); } }
-  if (b.hasAttribute('data-up')) { const nx = ECON.boats[G.boatLv + 1]; if (!nx) return; for (const [k, v] of Object.entries(nx.cost)) { if (k === 'gold') G.gold -= v; else spend(k, v); } G.boatLv++; if (USE_SHIP) G.ownBoatHp = nx.hp; else G.boatHp = nx.hp; G.stats.upgrades++; styleBoat(); if (USE_SHIP) Fleet.makeParked(); burst(boat.x, 2, boat.z, 30, '#FFC53D', 6, 0.15); SFX.play('level'); banner(nx.n.toUpperCase(), 'Boat Level ' + G.boatLv + ' · Kapasite ' + nx.cargo + ' · ' + nx.crew + ' soldiers'); }
+  if (b.hasAttribute('data-up')) { const nx = ECON.boats[G.boatLv + 1]; if (!nx) return; for (const [k, v] of Object.entries(nx.cost)) { if (k === 'gold') G.gold -= v; else spend(k, v); } G.boatLv++; if (USE_SHIP) G.ownBoatHp = nx.hp; else G.boatHp = nx.hp; G.stats.upgrades++; styleBoat(); if (USE_SHIP) Fleet.makeParked(); burst(boat.x, 2, boat.z, 30, '#FFC53D', 6, 0.15); SFX.play('level'); banner(nx.n.toUpperCase(), 'Boat Level ' + G.boatLv + ' · Capacity ' + nx.cargo + ' · ' + nx.crew + ' soldiers'); }
   markDirty(); updateHUD(); renderYard();
 });
 let resetAsk = false;
@@ -2897,7 +2931,7 @@ function renderInv() {
   h += `</div>${any ? '' : '<p class="note">Bag is empty.</p>'}<h5>RODS</h5><div class="inv">`;
   for (const id of ['wooden', 'basic', 'advanced']) { const r = ECON.rods[id], own = G.rods.includes(id), eq = G.rod === id; h += `<div class="slot ${eq ? 'eq' : own ? '' : 'lock'}">${ico(r.ico)}<b>${r.n}</b><small>${eq ? 'Equipped' : own ? 'Owned' : fmt(r.price) + ' Gold'}</small>${own && !eq ? `<button class="btn" data-eq="${id}">Equip</button>` : ''}</div>`; }
   const c = boatCfg();
-  h += `</div><h5>BOAT</h5><div class="row"><span class="ico">${ico('i-boat')}</span><span class="nm"><b>${c.n} · Level ${G.boatLv}</b><small>HP ${Math.round(G.boatHp)}/${c.hp} · Kapasite ${c.cargo} · ${c.crew} soldiers · Defense %${Math.round(c.def * 100)}</small></span></div>`;
+  h += `</div><h5>BOAT</h5><div class="row"><span class="ico">${ico('i-boat')}</span><span class="nm"><b>${c.n} · Level ${G.boatLv}</b><small>HP ${Math.round(G.boatHp)}/${c.hp} · Capacity ${c.cargo} · ${c.crew} soldiers · Defense %${Math.round(c.def * 100)}</small></span></div>`;
   h += `<h5>WEAPONS</h5>` + row(ico(Gear.icon()), Gear.weaponName(), '+' + EQUIP.swordAtk() + ' Attack · total ' + playerDmg() + ' · R Combo') + (G.heads.mens ? row(ico('i-mens'), 'MENS · Lv ' + G.heads.mens + (G.head === 'mens' ? '' : ' · not worn'), '+' + Gear.hstatLv('atk', G.heads.mens) + ' Attack · +' + Gear.hstatLv('hp', G.heads.mens) + ' HP') : '') + row(ico('i-shirt'), EQUIP.outfit() ? EQUIP.outfit().n + ' · Lv ' + G.outfits[G.outfit] : 'Starter outfit', EQUIP.outfit() ? '+' + EQUIP.ostat('atk') + ' Attack · +' + EQUIP.ostat('hp') + ' HP · +' + EQUIP.ostat('def') + ' Defense' : 'Buy outfits at the Equipment Shop') + row(ico('armor'), 'Armor pieces · ' + G.armor + '/5', '+' + 15 * G.armor + ' HP · +' + 5 * G.armor + ' Defense') + row(ico('i-bow'), 'Bow', G.bow ? 'Open · ' + G.bag.arrow + ' arrows (stored ' + G.depot.arrow + ') · Q' : (P.level < PROG.bow.level ? 'Level ' + PROG.bow.level + '' : questLine('bow'))) + row(ico('i-drone'), 'Drone', G.drone.owned ? 'Level ' + G.drone.lv + ' · HP ' + Math.round(G.drone.hp) + (G.drone.destroyed ? ' · downed' : '') + ' · G' : (P.level < PROG.drone.level ? 'Level ' + PROG.drone.level + '' : questLine('drone')));
   h += `<h5>CREW</h5><div class="row"><span class="ico">${ico('i-crew')}</span><span class="nm"><b>${G.crew.length} soldiers · ${G.crew.filter(e => e.follow).length} following</b><small>${G.crew.map((e, i) => crewName(e, i) + ': Lv ' + e.lv + ' ' + Orders.label(e).toLowerCase()).join(' · ') || 'No soldiers · recruit at the warehouse'}</small></span></div>`;
   const s = G.stats;
@@ -2979,7 +3013,7 @@ function computePrompt() {
   if (near(YARD_DOOR, 4.5)) opts.push({ d: dist(P, YARD_DOOR), key: 'y', icon: 'i-hammer', verb: 'Shipyard', sub: G.captured ? 'ISLAND CAPTURED' : boatCfg().n + ' Lv ' + G.boatLv + ' · Upgrade / Repair', active: !G.captured, why: 'Retake the warehouse first', run: () => { closePanels(); renderYard(); yardEl.hidden = false; }, color: 'var(--sea)' });
   if (near(WH_DOOR, 4)) opts.push({ d: dist(P, WH_DOOR), key: 'w' + G.captured, icon: 'i-box', verb: 'Island Warehouse', sub: G.captured ? 'ISLAND CAPTURED · clear the pirates' : 'Store · Take · Feed soldiers', active: !G.captured, why: 'Warehouse is occupied', run: () => { closePanels(); renderWh(); whEl.hidden = false; }, color: '#B0452E' });
   if (near(BAR_DOOR, 4.2)) { const waiting = G.crew.filter(e => !e.follow).length, fN = G.crew.filter(e => e.follow).length, capN = boatCfg().crew;
-    opts.push({ d: dist(P, BAR_DOOR), key: 'bp' + waiting + fN + G.crew.length, icon: 'i-barracks', verb: 'Barracks', sub: (waiting ? waiting + ' soldiers waiting · ' : '') + 'FOLLOW / JOIN · TRAIN · takip ' + fN + '/' + capN, active: true, run: () => { closePanels(); renderBar(); barEl.hidden = false; }, color: '#3E8E5A' }); }
+    opts.push({ d: dist(P, BAR_DOOR), key: 'bp' + waiting + fN + G.crew.length, icon: 'i-barracks', verb: 'Barracks', sub: (waiting ? waiting + ' soldiers waiting · ' : '') + 'FOLLOW / JOIN · TRAIN · following ' + fN + '/' + capN, active: true, run: () => { closePanels(); renderBar(); barEl.hidden = false; }, color: '#3E8E5A' }); }
   if (near(SMITH_DOOR, 3.8)) opts.push({ d: dist(P, SMITH_DOOR), key: 'sm', icon: 'i-anvil', verb: 'Blacksmith', sub: 'Sword Lv ' + G.sword + ' · upgrade weapons and outfits', active: true, run: () => { closePanels(); renderSmith(); smithEl.hidden = false; }, color: '#7D8BA3' });
   if (near(EQUIP_DOOR, 3.8)) opts.push({ d: dist(P, EQUIP_DOOR), key: 'eq', icon: 'i-shirt', verb: 'Equipment Shop', sub: 'Outfits · armor · potions', active: true, run: () => { closePanels(); renderEquip(); equipEl.hidden = false; }, color: 'var(--violet)' });
   if (near(HUT_DOOR, 3.6)) opts.push({ d: dist(P, HUT_DOOR), key: 'h', icon: 'i-hut', verb: 'Fishing Hut', sub: 'Sell fish · Buy rods', active: true, run: () => { closePanels(); renderShop(); shopEl.hidden = false; }, color: 'var(--sea)' });
@@ -4026,10 +4060,12 @@ Forge.init();
    Prototipte 5 sn'lik test reklamı gösterilir. Mobil sürümde AdsProvider.show() gerçek reklam SDK'sına
    (ör. AdMob / Unity Ads "rewarded" reklamı) bağlanır; ödül yalnızca reklam tamamlanınca verilir. */
 const AdsProvider = {
-  show(done, sec) { // done(true) = reklam sonuna kadar izlendi; sec = reklam uzunluğu
-    const el = $('#adPlay'), bar = $('#adBar'), n = $('#adN'), T = sec || 5, t0 = Date.now(); let fin = false; el.hidden = false; Ads.playing = true; n.textContent = T; bar.style.width = '0%';
-    const tickAd = () => { if (fin) return; const el2 = (Date.now() - t0) / 1000, left = Math.max(0, Math.ceil(T - el2)); n.textContent = left; bar.style.width = Math.min(100, el2 / T * 100) + '%'; if (el2 >= T) { fin = true; clearInterval(iv); document.removeEventListener('visibilitychange', tickAd); el.hidden = true; Ads.playing = false; try { done(true); } catch (e) { console.error(e); } } };
-    const iv = setInterval(tickAd, 250); document.addEventListener('visibilitychange', tickAd);
+  show(done, sec) {
+    const sdk = CG.sdk(); if (!sdk) { toast('No video available right now · try again later'); return; }
+    let fin = false; const end = ok => { if (fin) return; fin = true; Ads.playing = false; CG.mute(false); if (ok) { try { done(true); } catch (e) { console.error(e); } } };
+    try { sdk.ad.requestAd('rewarded', { adStarted: () => { Ads.playing = true; CG.mute(true); }, adFinished: () => end(true),
+      adError: e => { end(false); toast(e && e.code === 'adblock' ? 'Ad blocker detected · turn it off to get video rewards' : 'No video available right now · try again later'); } }); }
+    catch (e) { end(false); }
   },
 };
 const Ads = {
@@ -4477,7 +4513,7 @@ const Harbors = {
     give('rare', first ? 6 : 1); give('steel', first ? 12 : 3); if (ITEMS.seal) give('seal', first ? 6 : 1);
     const x = CAVE_CHEST.x, z = CAVE_CHEST.z; Gear.beam(x, CAVE_IN.y, z, '#FFC53D'); shock(x, CAVE_IN.y, z, 8, '#FFE08A'); burst(x, CAVE_IN.y + 2, z, 60, '#FFC53D', 8, 0.18); CAM.shake = 0.8; SFX.play('level');
     this.treasureN++; this.chestT = 1800;
-    if (first) { this.won[6] = true; G.crown = true; this.applyCrown();
+    if (first) { this.won[6] = true; G.crown = true; CG.happy(); this.applyCrown();
       later(0.8, () => showResult("KING'S TREASURE CLAIMED", 'You conquered all six islands · the final objective is complete', null, null, 'Continue', null, { text: '+150,000 Gold · rare gems · Central Steel · CROWN OF THE SEA KING (+20 Attack · +150 HP · +5 Defense, permanent). The chest refills every 30 minutes and the guardians return.', lostLabel: '' })); }
     else banner("KING'S CHEST", '+' + fmt(gold) + ' Gold · rare loot');
     markDirty();
@@ -4525,12 +4561,32 @@ const Harbors = {
     for (const i in this.units) this.despawn(+i); this.applyCrown(); },
 };
 // Taç: kalıcı +20 saldırı, +150 can, +5 savunma
-{ const os = EQUIP.ostat.bind(EQUIP); EQUIP.ostat = k => os(k) + (G.crown ? ({ atk: 20, hp: 150, def: 5 }[k] || 0) : 0); }
+{ const os = EQUIP.ostat.bind(EQUIP); EQUIP.ostat = (k, ...a) => os(k, ...a) + (G.crown && !a.length ? ({ atk: 20, hp: 150, def: 5 }[k] || 0) : 0); } // taç yalnızca oyuncunun toplamına eklenir; dükkân satırları kendi kıyafetini sorar
 // Drone ve ok: liman bataryaları ve devriye gemileri hedef alınabilir
 { const ap = Drone.autoPick; Drone.autoPick = () => ap() || Harbors.pickDef(P.wx, P.wz, Drone.cfg().range); }
 $('#bSail').addEventListener('click', () => Harbors.open());
 $('#sailP').addEventListener('click', e => { if (e.target.closest('[data-close]')) { closePanels(); return; } const b = e.target.closest('[data-sail]'); if (b) Harbors.setCourse(+b.getAttribute('data-sail')); });
 Harbors.init();
+
+/* ==================================================================
+   EARLY ACTION (modüler eklenti): ilk adada boş bekleme olmasın. Yalnızca Level 8'e kadar geçerli, sonra normal tempo.
+   İlk dalga ~15 sn · dalga aralığı kısa · 25 sn düşmansız kalınırsa yeni dalga · erken seviyelerde XP bonusu
+   ================================================================== */
+const EarlyAction = {
+  calmT: 0,
+  on() { return P.level < 8 && !G.captured; },
+  mul() { return P.level < 5 ? 0.55 : 0.75; },
+  xpMul() { return P.level < 5 ? 1.5 : P.level < 10 ? 1.25 : 1; },
+  tick(dt) {
+    if (!this.on() || Board.active || Raid.state === 'occupied' || Assault.pauseT > 0 || game.mode !== 'land') { this.calmT = 0; return; }
+    if (PIRATES.some(p => p.alive && p.assault && hyp(p.x, p.z) < 60)) { this.calmT = 0; return; }
+    this.calmT += dt; if (this.calmT > 25) { this.calmT = 0; Assault.t = Math.min(Assault.t, 0.01); }
+  },
+};
+{ const iv = Assault.interval.bind(Assault); Assault.interval = () => iv() * (EarlyAction.on() ? EarlyAction.mul() : 1); }
+{ const up = Assault.update.bind(Assault); Assault.update = dt => { up(dt); EarlyAction.tick(dt); }; }
+{ const ax = addXp; addXp = (n, at) => ax(Math.max(1, Math.round(n * EarlyAction.xpMul())), at); }
+later(0.3, () => { if (EarlyAction.on()) Assault.t = Math.min(Assault.t, 15); });
 
 /* ---------- WorldLabels: dünya etiketleri yalnızca dokununca (5 sn) görünür; savaş can çubukları her zaman ---------- */
 const Labels = {
@@ -4616,9 +4672,9 @@ function goFull() {
   if (!fs) { if (!goFull.hint && /iPhone|iPod/.test(navigator.userAgent)) { goFull.hint = 1; setTimeout(() => toast('Full screen on iPhone: Share ⬆ → Add to Home Screen, then open the game from its icon'), 1500); } return; }
   try { const r = fs.call(document.documentElement, { navigationUI: 'hide' }); if (r && r.then) r.then(lock, () => {}); else lock(); } catch (e) {}
 }
-if (isTouchDev) { addEventListener('touchend', goFull, true); addEventListener('click', goFull, true); }
+/* CrazyGames: tam ekranı platform yönetir */
 // Kendi sitesinde (ör. GitHub Pages) yüklenebilir uygulama: manifest + ikon → "Ana ekrana ekle" ile tam ekran açılır
-if (!/claude\.ai|claudeusercontent|anthropic/.test(location.host) && location.protocol.startsWith('http')) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = 'manifest.json'; document.head.appendChild(l); const a = document.createElement('link'); a.rel = 'apple-touch-icon'; a.href = 'icon-192.png'; document.head.appendChild(a); }
+if (false) { const l = document.createElement('link'); l.rel = 'manifest'; l.href = 'manifest.json'; document.head.appendChild(l); const a = document.createElement('link'); a.rel = 'apple-touch-icon'; a.href = 'icon-192.png'; document.head.appendChild(a); }
 setTimeout(() => { $('#camHint').hidden = true; }, 9000);
 
 /* ---------- Ana döngü ---------- */
@@ -4646,12 +4702,12 @@ function tick(now) {
   updateParts(dt); updateWakes(dt, t); updateShock(dt);
   updateCamera(rdt); updateWorldUI(rdt);
   uiT -= rdt; if (uiT <= 0) { uiT = 0.12; renderUI(); }
-  Save.update(rdt);
+  Save.update(rdt); CG.tick();
   renderer.render(scene, camera);
   fpsAcc += rdt; fpsN++; if (fpsAcc >= 1) { const fps = fpsN / fpsAcc; if (fps < 38) lowT++; else lowT = 0; if (lowT >= 3 && DPR > 1) { DPR = Math.max(1, DPR - 0.5); renderer.setPixelRatio(DPR); resize(); lowT = 0; } fpsAcc = 0; fpsN = 0; }
 }
 requestAnimationFrame(frame);
-if (location.hash === '#debug') window.TR = { get USE_SHIP() { return USE_SHIP; }, Harbors, HB_ISLES, I6, CAVE_IN, HARBOR_BATS, Pact, I5, BR5, unlockAkex, Ads, renderAds, FI, Forge, BR4, FI_FACS, FI_GARRISON, KENDO_RENE: () => KENDO.rene, CI, GATES, Center, Chop, Orders, Towers, ShipBuild, PowerShot, Gear, KENDO, BOKUTO_TREES, HUB_DOOR, BR3P, BR3E, COVE, renderHub, Costume, CAM, Threat, Goals,
+if (false) window.TR = { get USE_SHIP() { return USE_SHIP; }, Harbors, HB_ISLES, I6, CAVE_IN, HARBOR_BATS, Pact, I5, BR5, unlockAkex, Ads, renderAds, FI, Forge, BR4, FI_FACS, FI_GARRISON, KENDO_RENE: () => KENDO.rene, CI, GATES, Center, Chop, Orders, Towers, ShipBuild, PowerShot, Gear, KENDO, BOKUTO_TREES, HUB_DOOR, BR3P, BR3E, COVE, renderHub, Costume, CAM, Threat, Goals,
   // Test araçları (yalnızca #debug): simülasyon, performans ölçümü, Level 20+ stres modu
   bench(n = 60) { const t0 = performance.now(); for (let i = 0; i < n; i++) tick(last + 1000 / 30); const ms = (performance.now() - t0) / n; return { msPerFrame: +ms.toFixed(2), estFps: Math.round(1000 / ms), pirates: PIRATES.length, alive: PIRATES.filter(p => p.alive).length, particles: PARTS.length, wakes: WAKES.length, boats: Assault.boats.length, sceneObjects: (() => { let c = 0; scene.traverse(() => c++); return c; })(), drawCalls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }; },
   stress(level = 22) { P.level = level; refreshMaxHp(); P.hp = P.maxHp; G.bow = true; G.bag.arrow = 99; G.drone = { owned: true, lv: 3, hp: PROG.drone.levels[3].hp, destroyed: false }; G.crew = [0, 1, 2, 3, 4].map(() => ({ w: 2, m: 3, lv: 4, follow: true })); G.boatLv = 5; G.boatHp = ECON.boats[5].hp; styleBoat(); syncTroops(); Assault.pauseT = 0; Assault.bridge(); Assault.bridge(); Assault.boat('raft'); Assault.boat('ship'); Assault.boat('raft'); Assault.t = 5; updateHUD(); return 'stress on: level ' + level + ', ' + PIRATES.filter(p => p.alive).length + ' pirates'; },
