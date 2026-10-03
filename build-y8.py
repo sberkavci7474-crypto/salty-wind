@@ -35,10 +35,10 @@ html = rep("if (location.hash === '#debug') window.TR = ", "if (false) window.TR
 Y8_BRIDGE = r"""
 /* ---------- Y8 SDK köprüsü (portal derlemesi) ----------
    SDK yüklenmezse / hata verirse oyun tamamen oynanabilir kalır. Reklam yalnızca gerçek Y8 ödüllü reklamıdır. */
-const Y8_APP_ID = '';   // account.y8.com/applications adresinden alınan App ID
-const Y8_GAME_ID = '';  // Y8 onayından sonra verilen Game ID (reklamlar için)
+const Y8_APP_ID = '6ac1033ca654af47f466d448';   // Y8 geliştirici portalı → SDK Başlatma → Uygulama Kimliği
+const Y8_GAME_ID = '285893';  // Y8 geliştirici portalı → SDK Başlatma → Oyun Kimliği (reklamlar için)
 const Y8 = {
-  sdk: null, ok: false, adMute: false, loaded: false, cloudData: null, synced: false, started: false,
+  sdk: null, ok: false, adMute: false, loaded: false, asked: false, cloudData: null, synced: false, started: false,
   applyAudio() { try { if (typeof SFX === 'undefined' || !SFX.ctx) return; if (this.adMute) SFX.ctx.suspend(); else SFX.ctx.resume(); } catch (e) {} },
   mute(m) { this.adMute = m; this.applyAudio(); },
   norm(v) { // loadData: söz / düz değer / {data} / {value}; JSON metni olabilir
@@ -54,9 +54,10 @@ const Y8 = {
     try {
       const y8 = window.y8; if (!y8 || !y8.sdk) { this.started = false; return; }
       const sdk = y8.sdk();
-      sdk.init({ appId: Y8_APP_ID, autoLogin: true }, { gameId: Y8_GAME_ID, preloadAdBreaks: 'auto', sound: 'on', onReady: () => {
-        try { Y8.sdk = sdk; Y8.ok = true; Y8.loadSave(); } catch (e) {}
-      } });
+      sdk.init({ appId: Y8_APP_ID, autoLogin: true }, { gameId: Y8_GAME_ID, preloadAdBreaks: 'auto', sound: 'on', onReady: () => {} });
+      this.sdk = sdk; this.ok = true;
+      // bulut kaydı yalnızca Y8 hesabıyla giriş yapılınca (otomatik giriş veya sonradan)
+      try { sdk.onAuth((user, err) => { if (user && !err && !Y8.asked) { Y8.asked = true; Y8.loadSave(); } }); } catch (e) {}
     } catch (e) { this.ok = false; }
   },
   loadSave() { // bulut kaydı: sonucu bekle, Save hazır olunca tick içinde uygula
@@ -73,7 +74,8 @@ const Y8 = {
     } catch (e) {}
   },
 };
-if (window.y8) Y8.start(); else window.addEventListener('y8sdk.ready', () => Y8.start());
+window.addEventListener('y8sdk.ready', () => Y8.start(), { once: true });
+if (window.y8 && window.y8.emitReadyEvent) window.y8.emitReadyEvent(); // SDK önceden yüklendiyse
 """
 html = rep("'use strict';\n/* ==================================================================\n   Tuzlu Rüzgâr",
            "'use strict';" + Y8_BRIDGE + "/* ==================================================================\n   Tuzlu Rüzgâr", 'Y8 koprusu')
@@ -95,7 +97,9 @@ NEW_SHOW = """  show(done, sec) { // Y8 ödüllü reklam: done(true) yalnızca a
     safe = setTimeout(cleanup, 60000); // güvenlik: Ads.playing asla takılı kalmasın
     try {
       const p = sdk.showAd({ type: 'reward', name: 'reward-ad',
-        beforeReward: showAdFn => { Ads.playing = true; Y8.mute(true); try { showAdFn(); } catch (e) { cleanup(); } },
+        beforeAd: () => { Ads.playing = true; Y8.mute(true); }, // oyunu duraklat + sesi kapat
+        afterAd: () => { Ads.playing = false; Y8.mute(false); },
+        beforeReward: showAdFn => { try { showAdFn(); } catch (e) { cleanup(); } },
         adViewed: () => grant(),
         adDismissed: () => { dismissed = true; },
         adBreakDone: () => cleanup() });
