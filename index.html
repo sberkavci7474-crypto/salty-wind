@@ -1772,7 +1772,7 @@ function updateWorldUI(dt) {
   if (EnemyIsland.wh.alive && hyp(EWH.x - camT.x, EWH.z - camT.z) < 45) show(EnemyIsland.wh, '', 'ENEMY DEPOT', '', EnemyIsland.wh.hp / EnemyIsland.wh.max, 7);
   if (game.mode !== 'deck') for (const B of Assault.boats) if (B.state === 'go' && hyp(B.x - camT.x, B.z - camT.z) < 120) show(B, 'ship', B.kind === 'ship' ? '🚢 Landing ship' : '🚤 Pirate raft', '', 1, B.kind === 'ship' ? 5 : 3, B.crew.filter(p => p.alive).length + ' soldiers → ' + B.beach.name + ' beach', '#E8424A');
   if (Raid.state === 'raid' || Raid.state === 'occupied' || Raid.wh < whMaxF() - 1) show(WH, 'yard', Raid.state === 'occupied' ? 'WAREHOUSE · OCCUPIED' : 'WAREHOUSE', '', Raid.wh / whMaxF(), 7);
-  const det = Drone.detecting(); if (game.mode !== 'deck') for (const es of ESHIPS) if (es.present && hyp(es.x - camT.x, es.z - camT.z) < (game.mode === 'land' && !det ? 70 : 150)) { const e = boardEstimate(es); show(es, 'ship', (es.label ? es.label() : es.cfg.n) + (es.crippled ? ' · SAKAT' : ''), 'Lv ' + es.cfg.lv, 1, 2.6 * es.size + 1, 'Boarding: ' + e.label + (es.hull < es.maxHull ? ' · Hull %' + Math.round(es.hull / es.maxHull * 100) : '') + (det ? ' · 📡 ' + Math.round(hyp(es.x - P.wx, es.z - P.wz)) + ' m' : ''), e.color); }
+  const det = Drone.detecting(); if (game.mode !== 'deck') for (const es of ESHIPS) if (es.present && hyp(es.x - camT.x, es.z - camT.z) < (game.mode === 'land' && !det ? 70 : 150)) { const e = boardEstimate(es); show(es, 'ship', (es.label ? es.label() : es.cfg.n) + (es.crippled ? ' · SAKAT' : ''), 'Lv ' + es.cfg.lv, 1, 2.6 * es.size + 1, 'Boarding: ' + e.label + (es.hull < es.maxHull ? ' · Hull ' + Math.round(es.hull / es.maxHull * 100) + '%' : '') + (det ? ' · 📡 ' + Math.round(hyp(es.x - P.wx, es.z - P.wz)) + ' m' : ''), e.color); }
   if (game.mode !== 'deck') for (const f of Fleet.list) if (!f.inUse && hyp(f.x - camT.x, f.z - camT.z) < 90) { const b = Fleet.berth(Fleet.idx(f)); show(f, 'ally ship', '⚓ ' + f.cfg.n, 'Yours', 1, 2.6 * f.size + 1, f.state === 'sailing' ? 'Heading to harbor · ' + Math.round(hyp(f.x - b.x, f.z - b.z)) + ' m' : 'At your harbor dock', '#4FAE45'); }
   if (game.mode === 'sea') show(boat, 'ally', boatCfg().n, USE_SHIP ? 'Yours · Lv ' + USE_SHIP.cfg.lv : 'Lv ' + G.boatLv, G.boatHp / boatCfg().hp, 4.6 * boatK());
   Kendo.worldUI(show); Forge.worldUI(show); Pact.worldUI(show);
@@ -2125,7 +2125,7 @@ const Board = {
     const c = es.cfg; this.crew = [];
     c.crew.forEach((l, i) => this.crew.push(new Pirate(ARENA.x + 3 + (i % 3) * 2, ARENA.z - 2.4 + (i % 3) * 2.4 + (i > 2 ? 1 : 0), l, 'deck', { armor: c.armor, name: es.type === 'supply' ? 'Central Sailor' : es.type === 'worker' ? 'Forge Sailor' : c.armor ? 'Armored Pirate' : 'Pirate Warrior' })));
     if (c.captain) this.crew.push(new Pirate(ARENA.x + 9, ARENA.z, c.captain, 'deck', { armor: c.armor, captain: true, name: 'Captain' }));
-    const wk = es.weaken; if (wk > 0.01) { for (const p of this.crew) { p.maxHp = Math.max(1, Math.round(p.maxHp * (1 - wk))); p.hp = p.maxHp; } later(1.5, () => toast('Ship weakened · enemy crew HP −%' + Math.round(wk * 100) + ' HP')); }
+    const wk = es.weaken; if (wk > 0.01) { for (const p of this.crew) { p.maxHp = Math.max(1, Math.round(p.maxHp * (1 - wk))); p.hp = p.maxHp; } later(1.5, () => toast('Ship weakened · enemy crew HP −' + Math.round(wk * 100) + '%' + ' HP')); }
     camT.set(ARENA.x - 8.5, ARENA.y + 1.3, ARENA.z); CAM.yawT = CAM.yaw = -Math.PI / 2 + 0.35; CAM.pitchT = 0.6; camInit = false;
     banner('BOARDING!', c.n + ' Lv ' + c.lv + ' · defeat the crew', false); SFX.play('alarm');
     if (hungry) toast(hungry + ' soldiers hungry · fighting at 60% (give Food from warehouse)');
@@ -2385,7 +2385,7 @@ function renderBar() {
     const s = crewStats(e), c = S.cost(e.lv), max = e.lv >= S.maxLevel;
     const trainBtn = `<button class="btn gold" data-train="${i}" ${!max && canPay(c) ? '' : 'disabled'}>${max ? 'MAX' : 'TRAIN'}</button>`;
     const right = (e.follow ? `<button class="btn soft" data-stay="${i}">Stay</button>` : `<button class="btn soft" data-go="${i}" ${fN < capN ? '' : 'disabled'}>Join</button>`) + trainBtn;
-    h += row(ico('i-crew'), `${crewName(e, i)} · Level ${e.lv} · ${Orders.label(e)}`, `ATK ${s.atk} · HP ${s.hp} · DEF %${s.def} · Weapon +${e.w} · Meals ${e.m}/3` + (max ? '' : `<br>TRAIN → Lv ${e.lv + 1}: ${costStr(c)}`), right);
+    h += row(ico('i-crew'), `${crewName(e, i)} · Level ${e.lv} · ${Orders.label(e)}`, `ATK ${s.atk} · HP ${s.hp} · DEF ${s.def}% · Weapon +${e.w} · Meals ${e.m}/3` + (max ? '' : `<br>TRAIN → Lv ${e.lv + 1}: ${costStr(c)}`), right);
   });
   if (!G.crew.length) h += `<p class="note">No soldiers at the Barracks.</p>`;
   h += `<button class="btn big" data-recruit ${G.crew.length < S.barracksCap && G.gold >= rc.gold && G.depot.food >= rc.food ? '' : 'disabled'}>Recruit · ${rc.gold} Gold + ${rc.food} Food (from warehouse)</button>`;
@@ -2590,7 +2590,7 @@ const Assault = {
       p.ro = [(i % 2 ? 0.65 : -0.65) * (big ? size * 0.7 : 1), (0.9 - (i >> 1) * 0.9) * (big ? size * 0.55 : 1)]; B.crew.push(p);
     }
     this.boats.push(B);
-    toast(big ? '🚢 Pirate ship left Pirate Harbor with a landing party → ' + beach.name + ' beach' : '🚤 Pirate raft left the harbor → ' + beach.name + ' sahili (' + n + ' soldiers)'); SFX.play('alarm');
+    toast(big ? '🚢 Pirate ship left Pirate Harbor with a landing party → ' + beach.name + ' beach' : '🚤 Pirate raft left the harbor → ' + beach.name + ' beach (' + n + ' soldiers)'); SFX.play('alarm');
   },
   updateBoat(B, dt) {
     B.t += dt;
@@ -2661,7 +2661,7 @@ function renderSmith() {
   for (const id of owned) { const o = E.outfits[id], lv = G.outfits[id], c = outfitCost(id);
     h += row(ico('i-shirt'), o.n + ' · Level ' + lv, `+${EQUIP.ostat('atk', id)} Attack · +${EQUIP.ostat('hp', id)} HP · +${EQUIP.ostat('def', id)} Defense` + (c ? `<br>Level ${lv + 1}: +${EQUIP.ostat('atk', id, lv + 1)} ATK · +${EQUIP.ostat('hp', id, lv + 1)} HP · ${costStr(c)}` : ''), c ? `<button class="btn" data-oup="${id}" ${canPay(c) ? '' : 'disabled'}>Upgrade</button>` : ''); }
   h += Kendo.smithHTML();
-  h += `<p class="note">Toplam: Attack ${playerDmg()} · HP ${P.maxHp} · Defense %${Math.round(EQUIP.def() * 100)}</p>`;
+  h += `<p class="note">Toplam: Attack ${playerDmg()} · HP ${P.maxHp} · Defense ${Math.round(EQUIP.def() * 100)}%</p>`;
   $('#smithP').innerHTML = h;
 }
 const outfitCost = id => { const lv = G.outfits[id], c = PROG.equip.outfitCost[lv + 1]; return c ? { gold: Math.round(PROG.equip.outfits[id].price * c.goldMul), iron: c.iron } : null; };
@@ -2687,7 +2687,7 @@ function renderEquip() {
   h += reneHTML();
   h += `<h5><span>HEALTH POTIONS</span><span>BAG · WAREHOUSE</span></h5>`;
   for (const k of Potion.keys) { const T = E.potions[k];
-    h += row(ico(k), ITEMS[k].n + ' · +' + Math.max(T.heal, Math.round(T.pct * P.maxHp)) + ' HP (%' + Math.round(T.pct * 100) + ')', `${fmt(T.price)} Gold · in bag ${G.bag[k]} · stored ${G.depot[k]}`, `<button class="btn gold" data-pot="${k}" data-n="1" ${G.gold >= T.price ? '' : 'disabled'}>Buy</button><button class="btn gold" data-pot="${k}" data-n="5" ${G.gold >= T.price * 5 ? '' : 'disabled'}>×5</button>`); }
+    h += row(ico(k), ITEMS[k].n + ' · +' + Math.max(T.heal, Math.round(T.pct * P.maxHp)) + ' HP (' + Math.round(T.pct * 100) + '%' + ')', `${fmt(T.price)} Gold · in bag ${G.bag[k]} · stored ${G.depot[k]}`, `<button class="btn gold" data-pot="${k}" data-n="1" ${G.gold >= T.price ? '' : 'disabled'}>Buy</button><button class="btn gold" data-pot="${k}" data-n="5" ${G.gold >= T.price * 5 ? '' : 'disabled'}>×5</button>`); }
   h += `<p class="note">Potion: POTION button / H key · ${E.potionCd} s cooldown. If the bag is full, potions go to the warehouse.</p>`;
   $('#equipP').innerHTML = h;
 }
@@ -2768,7 +2768,7 @@ const Goals = {
     if (!s.elite) return 'Capture the Elite Warship Lv 25';
     if (!s.invasion) return 'Repel an attack wave at Invasion threat (threat ≥ 85)';
     if (G.sword < 5 || !G.outfit || G.outfits[G.outfit] < 3) return 'Get Sword Lv 5 and your worn outfit to Lv 3';
-    if (!G.weapons.bokuto) return 'Chop Bokuto Trees: ~1 in 20 drops the glowing BOKUTO (' + (G.bokutoN || 0) + ' kesildi)';
+    if (!G.weapons.bokuto) return 'Chop Bokuto Trees: ~1 in 20 drops the glowing BOKUTO (' + (G.bokutoN || 0) + ' chopped)';
     if (!G.outfits.doo) return 'Get the legendary DOO costume at the Central Armory (Level 25 · steel + seals)';
     if (!s.hubRaid) return 'Raid the Central Storehouse: defeat all fort warriors → supplies come to you';
     { const hg = Harbors.goal(); if (hg && (L >= 10 || Harbors.won[2])) return hg; }
@@ -2814,7 +2814,7 @@ function renderShop() {
   for (const id of ['wooden', 'basic', 'advanced']) {
     const r = ECON.rods[id], own = G.rods.includes(id), eq = G.rod === id;
     const btn = eq ? `<button class="btn soft" disabled>Equipped</button>` : own ? `<button class="btn" data-eq="${id}">Equip</button>` : `<button class="btn gold" data-buy="${id}" ${G.gold >= r.price ? '' : 'disabled'}>${fmt(r.price)} Gold</button>`;
-    h += `<div class="row ${own ? '' : 'locked'}"><span class="ico">${ico(r.ico)}</span><span class="nm"><b>${r.n}</b><small>Nadir %${r.odds[1]} · Golden %${r.odds[2]} · ${r.win.toFixed(2).replace('.', ',')} s</small></span>${btn}</div>`;
+    h += `<div class="row ${own ? '' : 'locked'}"><span class="ico">${ico(r.ico)}</span><span class="nm"><b>${r.n}</b><small>Rare ${r.odds[1]}% · Golden ${r.odds[2]}% · ${r.win.toFixed(2).replace('.', ',')} s</small></span>${btn}</div>`;
   }
   h += `<p class="note">Fishing Bait in your bag is used once per cast: rare +10%, golden +5%.</p>`;
   shopEl.innerHTML = h;
@@ -2863,7 +2863,7 @@ function renderYard() {
   const L = G.boatLv, c = boatCfg(), nx = ECON.boats[L + 1], cmp = USE_SHIP ? null : nx;
   const stat = (n, a, b) => `<span>${n}</span><b>${a}${b != null ? ' → ' + b : ''}</b>`;
   let h = hdr('Shipyard', USE_SHIP ? c.n + ' · captured ship' : c.n + ' · Level ' + L);
-  h += `<div class="stats">${stat('HP', Math.round(G.boatHp) + '/' + c.hp, cmp && cmp.hp)}${stat('Speed', c.speed, cmp && cmp.speed)}${stat('Cargo capacity', c.cargo, cmp && cmp.cargo)}${stat('Defense', '%' + Math.round(c.def * 100), cmp && '%' + Math.round(cmp.def * 100))}${stat('Boarding capacity', c.crew + ' soldiers', cmp && cmp.crew + ' soldiers')}${USE_SHIP ? stat('Cannons', c.cannon.dmg + ' dmg · ' + c.cannon.range + ' m') : ''}</div>`;
+  h += `<div class="stats">${stat('HP', Math.round(G.boatHp) + '/' + c.hp, cmp && cmp.hp)}${stat('Speed', c.speed, cmp && cmp.speed)}${stat('Cargo capacity', c.cargo, cmp && cmp.cargo)}${stat('Defense', '' + Math.round(c.def * 100) + '%', cmp && '' + Math.round(cmp.def * 100) + '%')}${stat('Boarding capacity', c.crew + ' soldiers', cmp && cmp.crew + ' soldiers')}${USE_SHIP ? stat('Cannons', c.cannon.dmg + ' dmg · ' + c.cannon.range + ' m') : ''}</div>`;
   if (USE_SHIP) h += `<p class="note">Your own boat (${ECON.boats[L].n} Lv ${L}) waits at the dock. Upgrades apply to your own boat.</p>`;
   if (G.boatHp < c.hp) { const rc = Math.ceil((c.hp - G.boatHp) * 2); h += `<h5>REPAIR</h5><button class="btn gold big" data-repair ${G.gold >= rc ? '' : 'disabled'}>Repair · ${fmt(rc)} Gold</button><p class="note">The boat slowly repairs itself while docked.</p>`; }
   if (nx) {
@@ -2892,12 +2892,12 @@ yardEl.addEventListener('click', e => {
 });
 let resetAsk = false;
 function renderInv() {
-  let h = hdr('Inventory', 'Captain · Level ' + P.level + ' · Attack ' + playerDmg() + ' · HP ' + P.maxHp + ' · Defense %' + Math.round(EQUIP.def() * 100)) + capBar() + `<div class="inv">`;
+  let h = hdr('Inventory', 'Captain · Level ' + P.level + ' · Attack ' + playerDmg() + ' · HP ' + P.maxHp + ' · Defense ' + Math.round(EQUIP.def() * 100) + '%') + capBar() + `<div class="inv">`;
   let any = false; for (const k of ITEM_ORDER) if (G.bag[k]) { any = true; h += `<div class="slot"><span class="n">×${G.bag[k]}</span>${ico(k)}<b>${ITEMS[k].n}</b></div>`; }
   h += `</div>${any ? '' : '<p class="note">Bag is empty.</p>'}<h5>RODS</h5><div class="inv">`;
   for (const id of ['wooden', 'basic', 'advanced']) { const r = ECON.rods[id], own = G.rods.includes(id), eq = G.rod === id; h += `<div class="slot ${eq ? 'eq' : own ? '' : 'lock'}">${ico(r.ico)}<b>${r.n}</b><small>${eq ? 'Equipped' : own ? 'Owned' : fmt(r.price) + ' Gold'}</small>${own && !eq ? `<button class="btn" data-eq="${id}">Equip</button>` : ''}</div>`; }
   const c = boatCfg();
-  h += `</div><h5>BOAT</h5><div class="row"><span class="ico">${ico('i-boat')}</span><span class="nm"><b>${c.n} · Level ${G.boatLv}</b><small>HP ${Math.round(G.boatHp)}/${c.hp} · Capacity ${c.cargo} · ${c.crew} soldiers · Defense %${Math.round(c.def * 100)}</small></span></div>`;
+  h += `</div><h5>BOAT</h5><div class="row"><span class="ico">${ico('i-boat')}</span><span class="nm"><b>${c.n} · Level ${G.boatLv}</b><small>HP ${Math.round(G.boatHp)}/${c.hp} · Capacity ${c.cargo} · ${c.crew} soldiers · Defense ${Math.round(c.def * 100)}%</small></span></div>`;
   h += `<h5>WEAPONS</h5>` + row(ico(Gear.icon()), Gear.weaponName(), '+' + EQUIP.swordAtk() + ' Attack · total ' + playerDmg() + ' · R Combo') + (G.heads.mens ? row(ico('i-mens'), 'MENS · Lv ' + G.heads.mens + (G.head === 'mens' ? '' : ' · not worn'), '+' + Gear.hstatLv('atk', G.heads.mens) + ' Attack · +' + Gear.hstatLv('hp', G.heads.mens) + ' HP') : '') + row(ico('i-shirt'), EQUIP.outfit() ? EQUIP.outfit().n + ' · Lv ' + G.outfits[G.outfit] : 'Starter outfit', EQUIP.outfit() ? '+' + EQUIP.ostat('atk') + ' Attack · +' + EQUIP.ostat('hp') + ' HP · +' + EQUIP.ostat('def') + ' Defense' : 'Buy outfits at the Equipment Shop') + row(ico('armor'), 'Armor pieces · ' + G.armor + '/5', '+' + 15 * G.armor + ' HP · +' + 5 * G.armor + ' Defense') + row(ico('i-bow'), 'Bow', G.bow ? 'Open · ' + G.bag.arrow + ' arrows (stored ' + G.depot.arrow + ') · Q' : (P.level < PROG.bow.level ? 'Level ' + PROG.bow.level + '' : questLine('bow'))) + row(ico('i-drone'), 'Drone', G.drone.owned ? 'Level ' + G.drone.lv + ' · HP ' + Math.round(G.drone.hp) + (G.drone.destroyed ? ' · downed' : '') + ' · G' : (P.level < PROG.drone.level ? 'Level ' + PROG.drone.level + '' : questLine('drone')));
   h += `<h5>CREW</h5><div class="row"><span class="ico">${ico('i-crew')}</span><span class="nm"><b>${G.crew.length} soldiers · ${G.crew.filter(e => e.follow).length} following</b><small>${G.crew.map((e, i) => crewName(e, i) + ': Lv ' + e.lv + ' ' + Orders.label(e).toLowerCase()).join(' · ') || 'No soldiers · recruit at the warehouse'}</small></span></div>`;
   const s = G.stats;
@@ -3009,7 +3009,7 @@ function renderUI() {
   Goals.update(); let tag = '', txt = '', raid = false;
   if (Board.active) { tag = 'BOARDING'; raid = true; txt = Board.crew.filter(p => p.alive).length + ' enemies left · ' + Board.deck.filter(t => t.alive).length + ' soldiers standing'; }
   else if (SwimSystem.inWater) { tag = 'SWIMMING'; raid = true; txt = (SwimSystem.depth === 'deep' ? 'Deep water · −' + PROG.swim.deepDrain : 'Shallow water · −' + PROG.swim.shallowDrain) + ' HP/s · swim to shore'; }
-  else if (Raid.state === 'incoming' || Raid.state === 'raid') { tag = 'DEFEND WAREHOUSE'; raid = true; const n = Raid.raiders.filter(p => p.alive).length; txt = Raid.state === 'incoming' ? 'Pirates incoming · go to the warehouse' : n + ' pirates · Warehouse %' + Math.round(Raid.wh / whMaxF() * 100); }
+  else if (Raid.state === 'incoming' || Raid.state === 'raid') { tag = 'DEFEND WAREHOUSE'; raid = true; const n = Raid.raiders.filter(p => p.alive).length; txt = Raid.state === 'incoming' ? 'Pirates incoming · go to the warehouse' : n + ' pirates · Warehouse ' + Math.round(Raid.wh / whMaxF() * 100) + '%'; }
   else if (Raid.state === 'occupied') { tag = 'RECAPTURE ISLAND'; raid = true; txt = 'Retake the warehouse: ' + Raid.raiders.filter(p => p.alive).length + ' pirates left'; }
   else if (Assault.alive() > 0) { tag = 'ATTACK'; raid = true; txt = Assault.alive() + ' pirates attack your island · defend the warehouse'; }
   else if (Raid.timer < 30) { tag = 'RAID'; raid = true; txt = 'Pirates attack in ' + Math.ceil(Raid.timer) + ' s · defend the warehouse'; }
@@ -3185,7 +3185,7 @@ const Chop = {
     addXp(30 + 3 * P.level, { x: c.x, y: c.y + 1, z: c.z }); G.bokutoN = (G.bokutoN || 0) + 1;
     if (!G.weapons.bokuto) {
       if (Math.random() < KENDO.bokuto.chance || G.bokutoN >= KENDO.bokuto.pity) { G.bokutoN = 0; later(1.0, () => Gear.unlockBokuto()); }
-      else floatText('No Bokuto · ' + G.bokutoN + '. tree · chance %' + Math.round(KENDO.bokuto.chance * 100), c.x, c.y + 6, c.z, 'info');
+      else floatText('No Bokuto · ' + G.bokutoN + '. tree · chance ' + Math.round(KENDO.bokuto.chance * 100) + '%', c.x, c.y + 6, c.z, 'info');
     } else if (Math.random() < 0.25) { const g = addItem('rare', 1, { x: c.x, y: c.y + 1, z: c.z }); if (!g) G.depot.rare++; }
     markDirty();
   },
@@ -3219,7 +3219,7 @@ const Chop = {
   },
   worldUI(show) {
     for (const c of this.list) { const d = hyp(c.x - camT.x, c.z - camT.z);
-      if (c.kind === 'bokuto') { if (d > 34) continue; const info = c.down ? 'Regrowing · ' + Math.ceil(c.rt) + ' s' : G.weapons.bokuto ? 'You own Bokuto · chop for Wood + Rare' : 'BOKUTO chance %' + Math.round(KENDO.bokuto.chance * 100) + ' · ' + (G.bokutoN || 0) + '/20 trees'; show(c, c.hp < 1 && !c.down ? 'yard' : 'ship', 'BOKUTO TREE', '', c.hp, c.y + 11.5, info, '#9E2A5E'); }
+      if (c.kind === 'bokuto') { if (d > 34) continue; const info = c.down ? 'Regrowing · ' + Math.ceil(c.rt) + ' s' : G.weapons.bokuto ? 'You own Bokuto · chop for Wood + Rare' : 'BOKUTO chance ' + Math.round(KENDO.bokuto.chance * 100) + '%' + ' · ' + (G.bokutoN || 0) + '/20 trees'; show(c, c.hp < 1 && !c.down ? 'yard' : 'ship', 'BOKUTO TREE', '', c.hp, c.y + 11.5, info, '#9E2A5E'); }
       else if (!c.down && c.hp < 1 && d < 30) show(c, 'small', '', '', c.hp, c.y + 4.8);
     }
   },
@@ -3394,7 +3394,7 @@ const ShipBuild = {
   },
   html() {
     let h = `<h5><span>SHIPBUILDING</span><span>BY SOLDIERS</span></h5>`;
-    if (G.shipProj) h += row(ico('i-hammer'), 'Fort Sloop · %' + Math.round(G.shipProj.p * 100), this.helpers() + ' soldiers working · tap a soldier → SHIP', '');
+    if (G.shipProj) h += row(ico('i-hammer'), 'Fort Sloop · ' + Math.round(G.shipProj.p * 100) + '%', this.helpers() + ' soldiers working · tap a soldier → SHIP', '');
     else h += row(ico('i-hammer'), 'Build Fort Sloop', 'HP 520 · Cargo 120 · 5 soldiers · cannons<br>' + costStr(this.cost), `<button class="btn" data-sbuild ${canPay(this.cost) && Fleet.list.length < PROG.fleet.max ? '' : 'disabled'}>Start</button>`);
     return h + `<p class="note">Construction progresses while soldiers with the SHIP order work at the Shipyard (1 soldier ~${this.workSec} s; more soldiers are faster).</p>`;
   },
@@ -3668,7 +3668,7 @@ const Center = {
 function renderHub() {
   const K = KENDO, H = K.hub, open = Center.isOpen();
   let h = hdr('Central Armory', 'Island 3 · the power hub that supplies both sides');
-  h += `<div class="stats"><span>Bridge gates</span><b>${open ? 'Open' : 'Closed'} · ${fmtT(Center.left())}</b><span>Central attitude</span><b>${Center.hot ? 'HOSTILE' : Center.anger > 15 ? 'Gergin (' + Math.round(Center.anger) + ')' : 'Neutral'}</b><span>Central Steel</span><b>${have('steel')}</b><span>Central Seal</span><b>${have('seal')}</b><span>Sevkiyatlar</span><b>${Center.controlT > 0 ? 'Under your control · ' + fmtT(Center.controlT) : 'Alternating both islands'}</b></div>`;
+  h += `<div class="stats"><span>Bridge gates</span><b>${open ? 'Open' : 'Closed'} · ${fmtT(Center.left())}</b><span>Central attitude</span><b>${Center.hot ? 'HOSTILE' : Center.anger > 15 ? 'Gergin (' + Math.round(Center.anger) + ')' : 'Neutral'}</b><span>Central Steel</span><b>${have('steel')}</b><span>Central Seal</span><b>${have('seal')}</b><span>Supply ships</span><b>${Center.controlT > 0 ? 'Under your control · ' + fmtT(Center.controlT) : 'Alternating both islands'}</b></div>`;
   h += `<h5><span>TRADE</span><span>RARE MATERIALS</span></h5>`;
   h += row(ico('steel'), 'Make Central Steel', costStr(H.steelTrade) + ' → 1 Central Steel', `<button class="btn" data-trade="steel" ${canPay(H.steelTrade) ? '' : 'disabled'}>Trade</button>`);
   h += row(ico('seal'), 'Get a Central Seal', costStr(H.sealTrade) + ' → 1 Central Seal', `<button class="btn" data-trade="seal" ${canPay(H.sealTrade) ? '' : 'disabled'}>Trade</button>`);
@@ -4239,6 +4239,7 @@ const HB_REQ_TXT = { lv: v => 'Level ' + v + '+', boat: v => ECON.boats[v].n + '
 const HB_HAVE = { lv: () => P.level, boat: () => G.boatLv, bow: () => G.bow ? 1 : 0, arrows: () => G.bag.arrow, drone: () => G.drone.owned && !G.drone.destroyed ? 1 : 0, troops: () => G.crew.length,
   tlv: v => G.crew.filter(e => (e.lv || 1) >= v).length, armor: () => G.armor, atk: () => playerDmg(), potions: () => Potion.total() };
 
+const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
 const Harbors = {
   won: { 1: true }, bats: [], guns: [], gk: {}, units: {}, warn: {}, spotT: 0, course: null, summon: null, voyT: 0, lavaT: 0, bombT: 6, cave: null, chestT: 0, treasureN: 0, shieldT: 0,
   isle(i) { return HB_ISLES[i]; },
@@ -4359,8 +4360,16 @@ const Harbors = {
     let wp = C.path[0]; while (wp && C.path.length > 1 && hyp(wp.x - S.x, wp.z - S.z) < 7) { C.path.shift(); wp = C.path[0]; }
     const d = hyp(wp.x - S.x, wp.z - S.z), last = C.path.length === 1;
     if (last && d < 3.5) { this.course = null; this.marker.visible = false; const H = HB_ISLES[C.i]; S.speed *= 0.3; banner('ARRIVED · ' + H.W.name, landingOption() ? 'Tap Go ashore (boat button)' : (this.landHint() || 'Get closer to the dock')); return { x: 0, y: 0 }; }
-    const diff = wrapA(Math.atan2(wp.x - S.x, wp.z - S.z) - S.heading), stuck = Math.abs(diff) > 1.2;
-    return { x: -clamp(diff * 1.8, -1, 1), y: stuck ? 0.35 : last ? clamp(d / 14, 0.3, 1) : 1 };
+    // takılma kurtarma: gemiler birbirini bekleyip kilitlenirse geri çekil ve yandan dolaş
+    if (C.backT > 0) { C.backT -= dt; return { x: C.side, y: C.backT > 0.6 ? -1 : 0.6 }; }
+    C.stuckT = Math.abs(S.speed) < 0.8 && d > 4 ? (C.stuckT || 0) + dt : 0;
+    if (C.stuckT > 1.5) { C.stuckT = 0; C.backT = 1.8; C.side = Math.random() < 0.5 ? -1 : 1; return { x: C.side, y: -1 }; }
+    // engelden kaçınma: önündeki gemilere/devriyelere yaklaşırken rotayı yana kaydır
+    let want = Math.atan2(wp.x - S.x, wp.z - S.z);
+    const avoid = o => { const dx = o.x - S.x, dz = o.z - S.z, dd = hyp(dx, dz), R = 14 + 3 * (o.size || 1); if (dd > R || dd > d + 4) return; const rel = wrapA(Math.atan2(dx, dz) - want); if (Math.abs(rel) > 1) return; want += (rel > 0 ? -1 : 1) * (1 - Math.abs(rel)) * (R - dd) / R * 1.4; };
+    for (const es of ESHIPS) if (es.present) avoid(es); for (const g of this.guns) if (g.present) avoid(g);
+    const diff = wrapA(want - S.heading), sharp = Math.abs(diff) > 1.2;
+    return { x: -clamp(diff * 1.8, -1, 1), y: sharp ? 0.35 : last ? clamp(d / 14, 0.3, 1) : 1 };
   },
   // Karadaki bir iskeleden teknesini çağır: tekne denizden kendi kendine gelir (ışınlanmaz)
   callBoat(W) {
@@ -4400,8 +4409,8 @@ const Harbors = {
     for (let i = 2; i <= 6; i++) { const H = HB_ISLES[i], live = (this.units[i] || []).length;
       if (!this.won[i] && !live && this.near(i, 55)) this.spawnIsle(i);
       else if (live && !this.near(i, 140) && !(i === 6 && this.cave)) this.despawn(i);
-      if (!this.won[i] && this.near(i, 45) && !this.warn[i]) { this.warn[i] = 1; const m = this.missing(i);
-        banner(H.n.toUpperCase() + ' · HOSTILE HARBOR', (this.batsOf(i).filter(b => b.present).length) + ' batteries · ' + this.gunsOf(i).filter(g => g.present).length + ' patrol ships · ' + this.guardsLeft(i) + ' guards' + (m.length ? ' · LOCKED: ' + m.slice(0, 2).join(', ') : ' · ready to assault'), true); }
+      if (!this.won[i] && this.near(i, 45) && !this.warn[i] && (sea || islandAt(px, pz) === H.I)) { this.warn[i] = 1; const m = this.missing(i);
+        banner(H.n.toUpperCase() + ' · HOSTILE HARBOR', pl(this.batsOf(i).filter(b => b.present).length, 'battery').replace('batterys', 'batteries') + ' · ' + pl(this.gunsOf(i).filter(g => g.present).length, 'patrol ship') + ' · ' + pl(this.guardsLeft(i), 'guard') + (m.length ? ' · LOCKED: ' + m.slice(0, 2).join(', ') : ' · ready to assault'), true); }
       else if (this.warn[i] && !this.near(i, 110)) this.warn[i] = 0; }
     // koordineli savunma: aynı bölgede biri savaşırsa diğerleri de yardıma gelir
     for (const i in this.units) { const U = this.units[i]; const hot = {}; for (const p of U) if (p.alive && (p.aggro > 0 || p.state === 'chase')) hot[p.zone] = 1; for (const p of U) if (p.alive && hot[p.zone] && p.kind === 'camp' && p.aggro < 2) p.aggro = 3; }
@@ -4503,7 +4512,7 @@ const Harbors = {
   renderSail() {
     let h = hdr('Sail to…', game.mode === 'sea' ? 'Pick a harbor · your boat sails there by sea (steer to cancel)' : 'Board your boat at a dock to set a course');
     for (let i = 1; i <= 6; i++) { const H = HB_ISLES[i], [st, col] = this.status(i), d = Math.round(hyp(boat.x - H.W.end.x, boat.z - H.W.end.z)), m = this.missing(i), danger = '★'.repeat(i - 1) || '—';
-      const def = H.home ? 'Safe harbor · repairs' : this.won[i] ? 'Safe landing · boat repair' : this.batsOf(i).filter(b => b.present).length + ' batteries · ' + this.gunsOf(i).filter(g => g.present).length + ' patrol ships · ' + this.guardsLeft(i) + ' guards' + (i === 6 ? " · King's Cave" : '');
+      const def = H.home ? 'Safe harbor · repairs' : this.won[i] ? 'Safe landing · boat repair' : pl(this.batsOf(i).filter(b => b.present).length, 'battery').replace('batterys', 'batteries') + ' · ' + pl(this.gunsOf(i).filter(g => g.present).length, 'patrol ship') + ' · ' + pl(this.guardsLeft(i), 'guard') + (i === 6 ? " · King's Cave" : '');
       h += row(`<b style="font-size:18px">${['', '🏠', '🏴‍☠️', '🏰', '🏭', '🗼', '👑'][i]}</b>`, H.W.name + ` <i style="font-style:normal;font-size:10px;padding:1px 6px;border-radius:6px;color:#fff;background:${col}">${st}</i>`,
         H.n + ' · ' + d + ' m · danger ' + danger + '<br>' + def + (m.length && !this.won[i] && !H.home ? '<br><span style="color:#E8424A">Needs: ' + m.join(', ') + '</span>' : ''),
         `<button class="btn ${game.mode === 'sea' ? '' : 'soft'}" data-sail="${i}" ${game.mode === 'sea' && d > 14 ? '' : 'disabled'}>⛵ Go</button>`); }
@@ -4514,7 +4523,7 @@ const Harbors = {
     if (m.length) return 'Prepare to assault ' + H.n + ': ' + m.slice(0, 3).join(', ');
     if (i === 6) return this.harbor6 ? (this.defLeft6() ? "Defeat King's Isle defenders (" + this.defLeft6() + ' left) → enter King\'s Cave' : "Enter King's Cave and claim the treasure") : "Sail to King's Isle (🧭) · destroy batteries + warships · secure King's Harbor";
     return 'Sail to ' + H.W.name + ' (🧭) · destroy ' + this.batsOf(i).filter(b => b.present).length + ' batteries' + (this.gunsOf(i).some(g => g.present) ? ' + patrol ships' : '') + ' · defeat ' + this.guardsLeft(i) + ' harbor guards'; } return null; },
-  statusLine() { const n = [2, 3, 4, 5, 6].filter(i => this.won[i]).length; const g = this.goal(); return n + '/5 islands captured' + (g ? ' · next: ' + g : ' · ALL ISLANDS CONQUERED'); },
+  statusLine() { const n = [2, 3, 4, 5, 6].filter(i => this.won[i]).length; const g = this.goal(); return n + '/5 islands captured' + (g ? ' · next: ' + g : n === 5 ? ' · ALL ISLANDS CONQUERED' : ' · reach Level 5, then assault Pirate Island (🧭)'); },
   hud() { const b = $('#bSail'); if (b) b.classList.toggle('on', !!this.course); },
   worldUI(show) {},
   save() { return { won: Object.keys(this.won).filter(k => this.won[k]).map(Number), gk: this.gk, z6: this.z6, h6: !!this.harbor6, cK: this.caveK || 0, cd: !!this.caveDone, ch: !!this.champDead, ct: Math.round(this.chestT), crown: !!G.crown,
